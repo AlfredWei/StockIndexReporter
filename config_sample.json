@@ -1,0 +1,29 @@
+{
+  "database": {
+    "type": "sqlite",
+    "path": "stockdb.db"
+  },
+  "monitor": {
+    "stocks": [
+      "0050.TW",
+      "2330.TW",
+      "2317.TW",
+      "2412.TW"
+    ]
+  },
+  "schedule": {
+    "period": "daily",
+    "time": "9:00:00"
+  },
+  "report": {
+    "method": "email",
+    "smtp": "localhost",
+    "user": "",
+    "pwd": "",
+    "subject": "[StockReport] Daily Report of Stock Picks {date}",
+    "from": "",
+    "to": [
+      ""
+    ]
+  }
+}

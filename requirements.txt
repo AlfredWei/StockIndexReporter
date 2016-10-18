@@ -1,0 +1,5 @@
+APScheduler==3.2.0
+colorama==0.3.3
+requests==2.8.1
+SQLAlchemy==1.1.1
+tqdm==4.8.4
