@@ -164,9 +164,11 @@ class StockReporter:
             if 'Buy' in content and content['Buy']:
                 index_msgs.extend(('You Should Buy', ''))
                 index_msgs.extend(content['Buy'])
+                index_msgs.extend([''] * 2)
             if 'Sale' in content and content['Sale']:
                 index_msgs.extend(('You Should Sale', ''))
                 index_msgs.extend(content['Sale'])
+                index_msgs.extend([''] * 2)
             if index_msgs:
                 index_msgs.insert(0, '')
                 index_msgs.insert(0, '--------------------')
@@ -174,7 +176,7 @@ class StockReporter:
             msg.extend(index_msgs)
 
         if 'footer' in self.config['report']:
-            msg.extend([''] * 5)
+            msg.extend([''] * 3)
             msg.extend(self.config['report']['footer'])
 
         if msg:
