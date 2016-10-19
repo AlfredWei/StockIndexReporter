@@ -1,4 +1,29 @@
 {
+  "schedule": {
+    "period": "daily",
+    "time": "9:00:00"
+  },
+  "report": {
+    "method": "email",
+    "smtp": "",
+    "user": "",
+    "pwd": "",
+    "subject": "[股票快報] 每日選股 {date}",
+    "from": "",
+    "to": [
+      ""
+    ],
+    "header": [
+      "Stock Report",
+      "RSI需在14日內突破 25，6日線高於14日線(買氣向上).  購買價格 >= 15.",
+      "--------------------"
+    ],
+    "footer": [
+      "--------------------",
+      "Indicators made by: Alfred, S.-Y., Wei",
+      "wei.alfred@gmail"
+    ]
+  },
   "monitor": {
     "stocks": [
       "2009.TW",
@@ -546,26 +571,6 @@
       "1110.TW",
       "1109.TW",
       "1103.TW"
-    ]
-  },
-  "schedule": {
-    "period": "daily",
-    "time": "9:00:00"
-  },
-  "report": {
-    "method": "email",
-    "smtp": "smtp.gmail.com:587",
-    "user": "",
-    "pwd": "",
-    "subject": "[StockReport] Daily Report of Stock Picks {date}",
-    "from": "",
-    "to": [
-      ""
-    ],
-    "footer": [
-      "--------------------",
-      "Indicators made by: Alfred, S.-Y., Wei",
-      "wei.alfred@gmail"
     ]
   },
   "stock_table": {

@@ -1,9 +1,10 @@
 from toolset.stockdb import *
 from toolset.yahoocrawer import *
 from toolset.confighelper import Config
-from toolset.indicatorplugin import RsiIndicator
+from toolset.indicatorplugin import RsiIndicator, PriceIndicator
 from apscheduler.schedulers.blocking import BlockingScheduler as Scheduler
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import smtplib
 import datetime
 
@@ -22,7 +23,7 @@ class ReportSender:
 
     @staticmethod
     def send_email(report, config):
-        msg = MIMEText(str(report))
+        msg = MIMEMultipart('alternative')
 
         supported_attr = {
             'date': datetime.date.today()
@@ -31,7 +32,8 @@ class ReportSender:
         msg['Subject'] = config.get('subject', 'No Subtitle').format_map(supported_attr)
         msg['From'] = config.get('from', 'alfred.syw@gmail.com')
         msg['To'] = ';'.join(config.get('to', []))
-
+        msg.attach(MIMEText(str(report), 'plain'))
+        msg.attach(MIMEText('<html><body>' + str(report) + '</body></html>', 'html'))
         # Send the message via our own SMTP server, but don't include the
         # envelope header.
         s = smtplib.SMTP(config.get('smtp', 'localhost'))
@@ -127,21 +129,48 @@ class StockReporter:
 
     def do_report(self):
 
-        indicators = [RsiIndicator()]
+        indicators = [RsiIndicator(), PriceIndicator()]
 
-        result = {i.name: {'Buy': [], 'Sale': []} for i in indicators}
         if self.config and 'monitor' in self.config:
+            result = {'Buy': {}, 'Sale': {}}
+            stocks = {id: {'score': 0, 'desc': ''} for id in self.config['monitor']['stocks']}
             for stock_id in self.config['monitor']['stocks']:
+                records = self.prepare(stock_id, indicators)
+                if not records:
+                    continue
+
                 for indexer in indicators:
-                    indexer.feed(self.prepare(stock_id, indicators))
+                    indexer.feed(records)
                     index, desc = indexer.do_report()
-                    if index > 0:
-                        result[indexer.name]['Buy'].append('{}({}): {}'.format(
-                            self.get_stock_name(stock_id), stock_id, desc))
-                    elif index < 0:
-                        result[indexer.name]['Sale'].append('{}({}): {}'.format(
-                            self.get_stock_name(stock_id), stock_id, desc))
-        return result
+                    stocks[stock_id]['score'] += index
+                    if stocks[stock_id]['desc']:
+                        stocks[stock_id]['desc'] += '; ' + desc
+                    else:
+                        stocks[stock_id]['desc'] += desc
+
+            for stock_id, indices_result in reversed(sorted(stocks.items(), key=lambda k: k[1]['score'])):
+                stock_cls = self.get_stock_type(stock_id)
+                stock_rep = '{}(<a href="https://tw.stock.yahoo.com/q/q?s={}">{}</a>): {}'.format(
+                    self.get_stock_name(stock_id), stock_id.split('.')[0], stock_id, indices_result['desc'])
+                key = ''
+                if indices_result['score'] > 0:
+                    key = 'Buy'
+                elif indices_result['score'] < 0:
+                    key = 'Sale'
+                if key:
+                    if stock_cls in result[key]:
+                        result[key][stock_cls].append(stock_rep)
+                    else:
+                        result[key][stock_cls] = [stock_rep]
+            return result
+        return {}
+
+    def get_stock_type(self, stock_id):
+        if 'stock_table' in self.config:
+            for c, d_table in self.config['stock_table'].items():
+                for id, name in d_table.items():
+                    if id.lower() == stock_id.lower():
+                        return c
 
     def get_stock_name(self, stock_id):
         if 'stock_table' in self.config:
@@ -159,28 +188,31 @@ class StockReporter:
 
     def transform_to_msg(self, report):
         msg = []
-        for index_name, content in report.items():
-            index_msgs = []
-            if 'Buy' in content and content['Buy']:
-                index_msgs.extend(('You Should Buy', ''))
-                index_msgs.extend(content['Buy'])
-                index_msgs.extend([''] * 2)
-            if 'Sale' in content and content['Sale']:
-                index_msgs.extend(('You Should Sale', ''))
-                index_msgs.extend(content['Sale'])
-                index_msgs.extend([''] * 2)
-            if index_msgs:
-                index_msgs.insert(0, '')
-                index_msgs.insert(0, '--------------------')
-                index_msgs.insert(0, index_name)
-            msg.extend(index_msgs)
+        body = []
+        if 'Buy' in report and report['Buy']:
+            body.extend(('<div>' + 'Suggest to Buy', ''))
+            for c, stocks in report['Buy'].items():
+                body.append('<p><b>' + c + '</b></p>')
+                body.extend(['<p><span>' + s + '</span></p>' for s in stocks])
+            body.append('</div>')
 
-        if 'footer' in self.config['report']:
-            msg.extend([''] * 3)
-            msg.extend(self.config['report']['footer'])
+        if body:
+            if 'header' in self.config['report']:
+                msg.append('<div>')
+                msg.append('<br/>'.join(self.config['report']['header']))
+                msg.extend(['<br/>'] * 3)
+                msg.append('</div>')
+
+            msg.extend(body)
+
+            if 'footer' in self.config['report']:
+                msg.append('<div>')
+                msg.extend(['<br/>'] * 3)
+                msg.extend('<br/>'.join(self.config['report']['footer']))
+                msg.append('</div>')
 
         if msg:
-            return '\n'.join(msg)
+            return ''.join(msg)
         return ''
 
 
@@ -194,11 +226,13 @@ def run_period(config_path):
 
 
 def start_schedule(config_path):
+
     config = Config(config_path)
     if 'schedule' in config and 'daily' == config['schedule']['period']:
         t = datetime.datetime.strptime(config['schedule']["time"], '%H:%M:%S')
         sched.add_job(run_period, 'cron', hour=t.hour, minute=t.minute, second=t.second, args=['config.json'])
         # sched.add_job(run_period, 'interval', seconds=5, args=['config.json']) # debug purpose
+        elog(ErrorLevel.HIGHLIGHT, 'Schedule start @ daily {}'.format(datetime.date.strftime(t, '%H:%M:%S')))
         sched.start()
 
 
