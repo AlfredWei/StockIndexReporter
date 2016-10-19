@@ -16,5 +16,5 @@ class Config(dict):
         self.load()
 
     def load(self):
-        with open(self.path) as fin:
+        with open(self.path, encoding='utf-8') as fin:
             self.update(json.load(fin))

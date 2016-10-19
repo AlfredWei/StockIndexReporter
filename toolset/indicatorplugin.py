@@ -11,8 +11,16 @@ class Indicator:
     def feed(self, records):
         pass
 
-    def gen_report(self):
+    def do_report(self):
         return False, []
+
+    @property
+    def name(self):
+        return 'Base Report'
+
+    @property
+    def required_days(self):
+        return 30
 
 
 class RsiIndicator(Indicator):
@@ -28,19 +36,27 @@ class RsiIndicator(Indicator):
         self.n = n
         self.data = []
 
+    @property
+    def required_days(self):
+        return self.n + 1
+
+    @property
+    def name(self):
+        return 'RSI Report'
+
     def feed(self, records):
         if len(records) < self.n + 1:
             raise ArithmeticError('Not enough data, you should provide at least {} data'.format(self.n + 1))
-        self.data = reversed(sorted(list(records), key=lambda x: x.date))
+        self.data = list(reversed(sorted(list(records), key=lambda x: x['Date'])))
 
-    def gen_report(self):
+    def do_report(self):
         val = self.rsi()
         if val <= RsiIndicator.oversale:
-            return 1, 'Buy {}'.format(val), 'Market over sale'
+            return 1, 'Buy {}, index shows market over sale'.format(val)
         elif val >= RsiIndicator.overbuy:
-            return -1, 'Sale {}'.format(val), 'Market over buy'
+            return -1, 'Sale {} index shows market over buy'.format(val)
         else:
-            return 0, 'Average {}'.format(val), 'Market in observation'
+            return 0, 'Average {} index shows market is on average'.format(val)
 
     def rsi(self):
         if len(self.data) < self.n:
@@ -55,9 +71,10 @@ class RsiIndicator(Indicator):
             if lastday_item is None:
                 break
 
-            if today_item.close > lastday_item.close:
-                U += (today_item.close - lastday_item.close)
-            elif today_item.close < lastday_item.close:
-                D += (lastday_item.close - today_item.close)
+            if today_item['Close'] > lastday_item['Close']:
+                U += (today_item['Close'] - lastday_item['Close'])
+            elif today_item['Close'] < lastday_item['Close']:
+                D += (lastday_item['Close'] - today_item['Close'])
 
-        RSI = ((U/self.n) / (U/self.n + D/self.n)) * 100.0
+        _rsi = ((U / self.n) / (U / self.n + D / self.n)) * 100.0
+        return _rsi
