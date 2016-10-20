@@ -217,12 +217,15 @@ class StockReporter:
 
 
 def run_period(config_path):
-    elog(ErrorLevel.HIGHLIGHT, 'Run Period {}'.format(datetime.date.today()))
-    config = Config(config_path)
-    mgr = StockReporter(config_path)
-    report = mgr.transform_to_msg(mgr.do_report())
-    if 'report' in config and report:
-        ReportSender.send(config['report'], report)
+    try:
+        elog(ErrorLevel.HIGHLIGHT, 'Run Period {}'.format(datetime.date.today()))
+        config = Config(config_path)
+        mgr = StockReporter(config_path)
+        report = mgr.transform_to_msg(mgr.do_report())
+        if 'report' in config and report:
+            ReportSender.send(config['report'], report)
+    except:
+        elog(ErrorLevel.ERROR, 'Something wrong')
 
 
 def start_schedule(config_path):
