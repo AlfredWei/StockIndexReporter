@@ -11,7 +11,7 @@ import datetime
 
 __author__ = 'Alfred, S.-Y., Wei'
 
-sched = Scheduler()
+sched = Scheduler(timezone='Asia/Taipei')
 
 
 class ReportSender:
